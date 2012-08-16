@@ -394,6 +394,7 @@ public class Solver {
 				}
 				numberOfLines++;
 			}
+			reader.close();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
