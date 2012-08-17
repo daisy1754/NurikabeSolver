@@ -362,12 +362,12 @@ public class Solver {
 		StringBuilder builder = new StringBuilder();
 		builder.append("   ");
 		for (int x = 0; x < stageSize.x; x++) {
-			builder.append(x > 10 ? x : " " + x);
+			builder.append(x >= 10 ? x : " " + x);
 		}
 		stream.println(builder);
 		for (int y = 0; y < stageSize.y; y++) {
 			builder = new StringBuilder();
-			builder.append(y > 10 ? y : " " + y);
+			builder.append(y >= 10 ? y : " " + y);
 			builder.append('|');
 			for (int x = 0; x < stageSize.x; x++) {
 				switch (stage[x][y]) {
@@ -384,7 +384,7 @@ public class Solver {
 					builder.append(" x");
 					break;
 				default:
-					if (stage[x][y] > 10)
+					if (stage[x][y] >= 10)
 						builder.append(stage[x][y]);
 					else
 						builder.append(" " + stage[x][y]);
