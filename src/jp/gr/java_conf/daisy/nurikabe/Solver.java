@@ -225,6 +225,8 @@ public class Solver {
 
 		tryToPaintBetweenLand(center, x, y + 2, x, y + 1);
 		tryToPaintBetweenLand(center, x + 2, y, x + 1, y);
+		tryToPaintBetweenLand(center, x, y - 2, x, y - 1);
+		tryToPaintBetweenLand(center, x - 2, y, x - 1, y);
 		tryToPaintBetweenLand(center, x + 1, y + 1, x, y + 1);
 		tryToPaintBetweenLand(center, x + 1, y + 1, x + 1, y);
 		tryToPaintBetweenLand(center, x - 1, y + 1, x, y + 1);
