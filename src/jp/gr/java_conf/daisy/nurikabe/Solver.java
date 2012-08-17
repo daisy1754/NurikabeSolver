@@ -95,6 +95,21 @@ public class Solver {
 			if (isolatedLand.size() > 0) {
 				mergeIsolatedLandToLand();
 			}
+			for (Land land : unresolvedLands.values()) {
+				if (land.size() == getTileState(land.getCenter()) - 1) {
+				List<Point> canBeLand = getPaintableTilesAround(land, 2);
+					if (canBeLand != null) {
+						Point p1 = canBeLand.get(0);
+						Point p2 = canBeLand.get(1);
+						if (Math.abs(p1.x - p2.x) == 1 && Math.abs(p1.y - p2.y) == 1) {
+							if (getTileState(p1.x, p2.y) == TYPE_UNDEFINED)
+								tryToPaint(p1.x, p2.y);
+							if (getTileState(p2.x, p1.y) == TYPE_UNDEFINED)
+								tryToPaint(p2.x, p1.y);
+						}
+					}
+				}
+			}
 			if (cannotPaint)
 				break;
 		}
@@ -108,13 +123,26 @@ public class Solver {
 			= new HashMap<Point, Land>(unresolvedLands);
 		for (Point center: copyOfUnresolvedLands.keySet()) {
 			Land land = copyOfUnresolvedLands.get(center);
-			int maxSize = getTileState(center.x, center.y);
+			int maxSize = getTileState(center);
 			Point paintablePoint;
 			while (land.size() < maxSize 
-					&& (paintablePoint = checkLand(land)) != null) {
+					&& (paintablePoint = getPaintableTileAround(land)) != null) {
 				count++;
 				land.add(paintablePoint);
 				tryToCheckAsLand(paintablePoint.x, paintablePoint.y, center);
+				
+				Iterator<Point> iterator = isolatedLand.iterator();
+				while (iterator.hasNext()) {
+					Point isolated = iterator.next();
+					int xDiff = Math.abs(isolated.x - paintablePoint.x);
+					int yDiff = Math.abs(isolated.y - paintablePoint.y);
+					if (xDiff + yDiff == 1) {
+						count++;
+						land.add(isolated);
+						tryToCheckAsLand(isolated.x, isolated.y, center);
+						iterator.remove();
+					}
+				}
 			}
 			if (maxSize == land.size()) {
 				count++;
@@ -158,8 +186,8 @@ public class Solver {
 			Point isolated = iterator.next();
 			Set<Point> neibors = getNeibors(isolated);
 			for (Point neibor: neibors) {
-				if (getTileState(neibor.x, neibor.y) == TYPE_LAND
-						|| getTileState(neibor.x, neibor.y) > 0) {
+				if (getTileState(neibor) == TYPE_LAND
+						|| getTileState(neibor) > 0) {
 					Point center = landToCenter.get(neibor);
 					if (center != null) {
 						Land land = unresolvedLands.get(center);
@@ -226,6 +254,10 @@ public class Solver {
 		}
 		return undefinedTiles;
 	}
+
+	private int getTileState(Point p) {
+		return getTileState(p.x, p.y);
+	}
 	
 	private int getTileState(int x, int y) {
 		if (x < 0 || stageSize.x <= x) 
@@ -250,24 +282,29 @@ public class Solver {
 		return set;
 	}
 	
-	private Point checkLand(Land land) {
+	private List<Point> getPaintableTilesAround(Land land, int size) {
 		Set<Point> points = land.getPoints();
 		Set<Point> canBeLand = new HashSet<Point>();
 		for (Point p: points) {
 			Set<Point> neibors = getNeibors(p);
 			for (Point neibor: neibors) {
-				if (getTileState(neibor.x, neibor.y) == TYPE_UNDEFINED) {
+				if (getTileState(neibor) == TYPE_UNDEFINED) {
 					canBeLand.add(neibor);
-					if (canBeLand.size() > 2)
+					if (canBeLand.size() > size)
 						return null;
 				}
 			}
 		}
-		if (canBeLand.size() == 1) {
-			return new ArrayList<Point>(canBeLand).get(0);
+		if (canBeLand.size() == size) {
+			return new ArrayList<Point>(canBeLand);
 		} else {
 			return null;
 		}
+	}
+	
+	private Point getPaintableTileAround(Land land) {
+		List<Point> tileList =  getPaintableTilesAround(land, 1);
+		return tileList == null ? null : tileList.get(0);
 	}
 	
 	private void paintAroundLand(Land land) {
@@ -275,7 +312,7 @@ public class Solver {
 		for (Point p: points) {
 			Set<Point> neibors = getNeibors(p);
 			for (Point neibor: neibors) {
-				if (getTileState(neibor.x, neibor.y) == TYPE_UNDEFINED) {
+				if (getTileState(neibor) == TYPE_UNDEFINED) {
 					tryToPaint(neibor);
 				}
 			}
@@ -284,29 +321,35 @@ public class Solver {
 	
 	private int checkAroundBlocks() {
 		int count = 0;
+		int numberOfWalls = 0;
 		Set<Point> currentBlocks = new HashSet<Point>(blocks);
-		Set<Point> shouldSkipBlocks = new HashSet<Point>();
+		Set<Point> consideredBlocks = new HashSet<Point>();
 		for (Point p: currentBlocks) {
-			if (shouldSkipBlocks.contains(p))
+			if (consideredBlocks.contains(p))
 				continue;
+			numberOfWalls++;
 			Set<Point> canPutBlocks = new HashSet<Point>();
 			Stack<Point> stack = new Stack<Point>();
 			stack.add(p);
 			while (!stack.isEmpty()) {
 				Point point = stack.pop();
-				shouldSkipBlocks.add(point);
+				consideredBlocks.add(point);
 				Set<Point> neibors = getNeibors(point);
 				for (Point neibor: neibors) {
-					int neiborState = getTileState(neibor.x, neibor.y);
+					int neiborState = getTileState(neibor);
 					if (neiborState == TYPE_UNDEFINED) {
 						canPutBlocks.add(neibor);
 					} else if (neiborState == TYPE_BLOCK) {
-						if (!shouldSkipBlocks.contains(neibor))
+						if (!consideredBlocks.contains(neibor))
 							stack.push(neibor);
 					}
 				}
 			}
 			if (canPutBlocks.size() == 1) {
+				if (numberOfWalls == 1 
+						&& consideredBlocks.size() >= currentBlocks.size())
+					continue;
+				numberOfWalls--;
 				Point onlyPoint = new ArrayList<Point>(canPutBlocks).get(0);
 				tryToPaint(onlyPoint);
 				count++;
@@ -380,13 +423,13 @@ public class Solver {
 							if (number != actual) {
 								System.err.println("invalid format at " + i
 										+ ", " + numberOfLines + " actual:" 
-										+ actual + " expected" + tokens[i]);
+										+ actual + " expected:" + tokens[i]);
 								return false;
 							}
 						} catch (NumberFormatException exception) {
 							System.err.println("invalid format at " + i
-									+ ", " + numberOfLines + " actual:" 
-									+ actual + " expected" + tokens[i]);
+									+ ", " + numberOfLines + " actual: " 
+									+ actual + " expected: " + tokens[i]);
 							return false;
 						}
 					}
