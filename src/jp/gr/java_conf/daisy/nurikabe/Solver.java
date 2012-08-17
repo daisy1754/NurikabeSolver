@@ -252,19 +252,19 @@ public class Solver {
 	
 	private Point checkLand(Land land) {
 		Set<Point> points = land.getPoints();
-		Set<Point> canBeBlank = new HashSet<Point>();
+		Set<Point> canBeLand = new HashSet<Point>();
 		for (Point p: points) {
 			Set<Point> neibors = getNeibors(p);
 			for (Point neibor: neibors) {
 				if (getTileState(neibor.x, neibor.y) == TYPE_UNDEFINED) {
-					canBeBlank.add(neibor);
-					if (canBeBlank.size() > 2)
+					canBeLand.add(neibor);
+					if (canBeLand.size() > 2)
 						return null;
 				}
 			}
 		}
-		if (canBeBlank.size() == 1) {
-			return new ArrayList<Point>(canBeBlank).get(0);
+		if (canBeLand.size() == 1) {
+			return new ArrayList<Point>(canBeLand).get(0);
 		} else {
 			return null;
 		}
@@ -379,13 +379,13 @@ public class Solver {
 							int number = Integer.parseInt(tokens[i]);
 							if (number != actual) {
 								System.err.println("invalid format at " + i
-										+ ", " + numberOfLines + "actual:" 
+										+ ", " + numberOfLines + " actual:" 
 										+ actual + " expected" + tokens[i]);
 								return false;
 							}
 						} catch (NumberFormatException exception) {
 							System.err.println("invalid format at " + i
-									+ ", " + numberOfLines + "actual:" 
+									+ ", " + numberOfLines + " actual:" 
 									+ actual + " expected" + tokens[i]);
 							return false;
 						}
