@@ -131,11 +131,6 @@ public class Solver {
 					}
 				}
 			}
-			if (maxSize == land.size()) {
-				count++;
-				unresolvedLands.remove(center);
-				paintAroundLand(land);
-			}
 		}
 		return count;
 	}
@@ -157,8 +152,7 @@ public class Solver {
 						|| (getTileState(x + 1, y) == TYPE_BLOCK // right up
 							&& getTileState(x + 1, y - 1) == TYPE_BLOCK
 							&& getTileState(x, y - 1) == TYPE_BLOCK)) {
-						stage[x][y] = TYPE_LAND_ISOLATED;
-						isolatedLand.add(new Point(x, y));
+						tryToCheckAsIsolatedLand(x, y);
 						count++;
 					}
 				}
@@ -199,11 +193,7 @@ public class Solver {
 					if (neiborState== TYPE_LAND || neiborState > 0) {
 						Point center = landToCenter.get(neibor);
 						if (center != null) {
-							// merge isolated land to land
-							Land land = unresolvedLands.get(center);
-							land.add(target);
-							tryToCheckAsLand(target.x, target.y, center);
-							isolatedLand.remove(target);
+							mergeIsoltedLandToLand(target, center);
 							progress = true;
 							break;
 						}
@@ -214,8 +204,7 @@ public class Solver {
 					}
 				}
 				if (numberOfBlocksInNeibor == 3 && undefinedPoint != null) {
-					stage[undefinedPoint.x][undefinedPoint.y] = TYPE_LAND_ISOLATED;
-					isolatedLand.add(undefinedPoint);
+					tryToCheckAsIsolatedLand(undefinedPoint.x, undefinedPoint.y);
 					progress = true;
 					target = undefinedPoint;
 				} else {
@@ -256,7 +245,82 @@ public class Solver {
 		tryToPaintBetweenLand(center, x + 1, y + 1, x + 1, y);
 		tryToPaintBetweenLand(center, x - 1, y + 1, x, y + 1);
 		tryToPaintBetweenLand(center, x - 1, y + 1, x - 1, y);
+
+		Set<Point> neibors = getNeibors(new Point(x, y));
+		for (Point neibor: neibors) {
+			if (getTileState(neibor) == TYPE_LAND_ISOLATED) {
+				mergeIsoltedLandToLand(neibor, center);
+			}
+		}
+		int maxSize = stage[center.x][center.y];
+		Land land = unresolvedLands.get(center);
+		if (land != null && maxSize == land.size()) {
+			unresolvedLands.remove(center);
+			paintAroundLand(land);
+		}
 		return true;
+	}
+	
+	private boolean tryToCheckAsIsolatedLand(int x, int y) {
+		if (x < 0 || stageSize.x <= x) 
+			return false;
+		if (y < 0 || stageSize.y <= y)
+			return false;
+		stage[x][y] = TYPE_LAND_ISOLATED;
+		Point isolated = new Point(x, y);
+		isolatedLand.add(isolated);
+		
+		int[] deltaX = {0, 0, 2, -2};
+		int[] deltaY = {2, -2, 0, 0};
+		Set<Point> checked = new HashSet<Point>();
+		Stack<Point> stack = new Stack<Point>();
+		Map<Point, Point> mayAnotherLands = new HashMap<Point, Point>();
+		stack.add(isolated);
+		while (!stack.isEmpty()) {
+			Point point = stack.pop();
+			if (checked.contains(point))
+				continue;
+			checked.add(point);
+			Set<Point> neibors = getNeibors(point);
+			for (Point neibor: neibors) {
+				int neiborState = getTileState(neibor);
+				if (neiborState == TYPE_LAND_ISOLATED) {
+					stack.push(neibor);
+				}
+			}
+			for (int i = 0; i < 4; i++) {
+				Point pointDist1 = new Point(
+						point.x + deltaX[i] / 2, point.y + deltaY[i] / 2);
+				Point pointDist2 = new Point(
+						point.x + deltaX[i], point.y + deltaY[i]);
+				int stateOf1 = getTileState(pointDist1);
+				int stateOf2 = getTileState(pointDist2);
+				if (stateOf1 == TYPE_UNDEFINED &&
+						(stateOf2 == TYPE_LAND || stateOf2 > 0)) {
+					mayAnotherLands.put(pointDist2, pointDist1);
+				}
+			}
+		}
+		int isolatedLandSize = checked.size();
+		for (Point mayAnotherLand: mayAnotherLands.keySet()) {
+			Point center = landToCenter.get(mayAnotherLand);
+			Land land = unresolvedLands.get(center);
+			int restSize = land != null ? 
+					getTileState(center) - land.getPoints().size() : 0;
+			if (restSize - 1 < isolatedLandSize) {
+				tryToPaint(mayAnotherLands.get(mayAnotherLand));
+			}
+		}
+		return true;
+	}
+	
+	private void mergeIsoltedLandToLand(Point isolated, Point center) {
+		if (!isolatedLand.contains(isolated))
+			return;
+		Land land = unresolvedLands.get(center);
+		land.add(isolated);
+		tryToCheckAsLand(isolated.x, isolated.y, center);
+		isolatedLand.remove(isolated);
 	}
 	
 	private boolean tryToPaintBetweenLand(
