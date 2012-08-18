@@ -93,7 +93,8 @@ public class Solver {
 					cannotPaint = false;
 			}
 			if (isolatedLand.size() > 0) {
-				mergeIsolatedLandToLand();
+				if (checkAroundIsolatedLand())
+					cannotPaint = false;
 			}
 			checkAroundLastOneBlockOfLand();
 			if (cannotPaint)
@@ -184,25 +185,45 @@ public class Solver {
 		}
 	}
 
-	private void mergeIsolatedLandToLand() {
-		Iterator<Point> iterator = isolatedLand.iterator();
-		while (iterator.hasNext()) {
-			Point isolated = iterator.next();
-			Set<Point> neibors = getNeibors(isolated);
-			for (Point neibor: neibors) {
-				if (getTileState(neibor) == TYPE_LAND
-						|| getTileState(neibor) > 0) {
-					Point center = landToCenter.get(neibor);
-					if (center != null) {
-						Land land = unresolvedLands.get(center);
-						land.add(isolated);
-						tryToCheckAsLand(isolated.x, isolated.y, center);
-						iterator.remove();
-						break;
+	private boolean checkAroundIsolatedLand() {
+		boolean progress = false;
+		Set<Point> copyOfIsolatedLand = new HashSet<Point>(isolatedLand);
+		for (Point isolate: copyOfIsolatedLand) {
+			Point target = isolate;
+			while (target != null) {
+				Point undefinedPoint = null;
+				Set<Point> neibors = getNeibors(target);
+				int numberOfBlocksInNeibor = 4 - neibors.size();
+				for (Point neibor: neibors) {
+					int neiborState = getTileState(neibor);
+					if (neiborState== TYPE_LAND || neiborState > 0) {
+						Point center = landToCenter.get(neibor);
+						if (center != null) {
+							// merge isolated land to land
+							Land land = unresolvedLands.get(center);
+							land.add(target);
+							tryToCheckAsLand(target.x, target.y, center);
+							isolatedLand.remove(target);
+							progress = true;
+							break;
+						}
+					} else if (neiborState == TYPE_BLOCK || neiborState < 0) {
+						numberOfBlocksInNeibor++;
+					} else if (neiborState == TYPE_UNDEFINED) {
+						undefinedPoint = neibor;
 					}
+				}
+				if (numberOfBlocksInNeibor == 3 && undefinedPoint != null) {
+					stage[undefinedPoint.x][undefinedPoint.y] = TYPE_LAND_ISOLATED;
+					isolatedLand.add(undefinedPoint);
+					progress = true;
+					target = undefinedPoint;
+				} else {
+					target = null;
 				}
 			}
 		}
+		return progress;
 	}
 	
 	private boolean tryToPaint(Point point) {
