@@ -95,21 +95,7 @@ public class Solver {
 			if (isolatedLand.size() > 0) {
 				mergeIsolatedLandToLand();
 			}
-			for (Land land : unresolvedLands.values()) {
-				if (land.size() == getTileState(land.getCenter()) - 1) {
-				List<Point> canBeLand = getPaintableTilesAround(land, 2);
-					if (canBeLand != null) {
-						Point p1 = canBeLand.get(0);
-						Point p2 = canBeLand.get(1);
-						if (Math.abs(p1.x - p2.x) == 1 && Math.abs(p1.y - p2.y) == 1) {
-							if (getTileState(p1.x, p2.y) == TYPE_UNDEFINED)
-								tryToPaint(p1.x, p2.y);
-							if (getTileState(p2.x, p1.y) == TYPE_UNDEFINED)
-								tryToPaint(p2.x, p1.y);
-						}
-					}
-				}
-			}
+			checkAroundLastOneBlockOfLand();
 			if (cannotPaint)
 				break;
 		}
@@ -180,6 +166,24 @@ public class Solver {
 		return count;
 	}
 	
+	private void checkAroundLastOneBlockOfLand() {
+		for (Land land : unresolvedLands.values()) {
+			if (land.size() == getTileState(land.getCenter()) - 1) {
+			List<Point> canBeLand = getPaintableTilesAround(land, 2);
+				if (canBeLand != null) {
+					Point p1 = canBeLand.get(0);
+					Point p2 = canBeLand.get(1);
+					if (Math.abs(p1.x - p2.x) == 1 && Math.abs(p1.y - p2.y) == 1) {
+						if (getTileState(p1.x, p2.y) == TYPE_UNDEFINED)
+							tryToPaint(p1.x, p2.y);
+						if (getTileState(p2.x, p1.y) == TYPE_UNDEFINED)
+							tryToPaint(p2.x, p1.y);
+					}
+				}
+			}
+		}
+	}
+
 	private void mergeIsolatedLandToLand() {
 		Iterator<Point> iterator = isolatedLand.iterator();
 		while (iterator.hasNext()) {
